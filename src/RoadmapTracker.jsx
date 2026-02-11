@@ -413,14 +413,15 @@ export default function RoadmapTracker() {
           if (!unlockedAchievements.includes(a.id) && a.check(newStats)) {
             setUnlockedAchievements(prev => [...prev, a.id]);
             setShowAchievement(a);
-            achieveHideTimer.current = setTimeout(() => setShowAchievement(null), 4000);
+            achieveHideTimer.current = setTimeout(() => setShowAchievement(null), 2000);
           }
         });
       }, 2000);
     } else {
-      // Unchecking: cancel pending achievement timer and revoke achievements that no longer qualify
+      // Unchecking: cancel pending achievement timer, dismiss popup, and revoke achievements that no longer qualify
       clearTimeout(achieveTimer.current);
       clearTimeout(achieveHideTimer.current);
+      setShowAchievement(null);
       const newSessionIds = new Set(sessionDoneIds);
       newSessionIds.delete(milestoneId);
       setSessionDoneIds(newSessionIds);
@@ -459,10 +460,10 @@ export default function RoadmapTracker() {
       <Toast {...toast} />
 
       {showAchievement && (
-        <div style={{
+        <div onClick={() => { clearTimeout(achieveHideTimer.current); setShowAchievement(null); }} style={{
           position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)",
           background: "linear-gradient(135deg, #fbbf24, #f59e0b)", color: "#78350f",
-          padding: "16px 32px", borderRadius: 16, zIndex: 300,
+          padding: "16px 32px", borderRadius: 16, zIndex: 300, cursor: "pointer",
           boxShadow: "0 10px 40px rgba(245,158,11,0.4)",
           animation: "slideDown 0.5s cubic-bezier(0.34,1.56,0.64,1)", textAlign: "center",
         }}>
