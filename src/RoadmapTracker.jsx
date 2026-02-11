@@ -763,8 +763,9 @@ export default function RoadmapTracker() {
             ? ((nowIdx - minIdx) + (now.getDate() / 30)) / colCount * 100
             : null;
 
-          const ROW_H = 36;
-          const LABEL_W = 260;
+          const ROW_H = 48;
+          const LABEL_W = 340;
+          const COL_W = 180;
 
           return (
             <div style={{ overflowX: "auto" }}>
@@ -777,11 +778,11 @@ export default function RoadmapTracker() {
                   const isCurrent = gm.index === nowIdx;
                   return (
                     <div key={gm.label} style={{
-                      flex: `0 0 ${100 / colCount}%`, minWidth: 140,
-                      textAlign: "center", fontSize: 12, fontWeight: 700,
-                      color: isCurrent ? "#1e293b" : "#94a3b8",
+                      width: COL_W, minWidth: COL_W, flexShrink: 0,
+                      textAlign: "center", fontSize: 13, fontWeight: 700,
+                      color: isCurrent ? "#1e293b" : "#64748b",
                       letterSpacing: 0.5, textTransform: "uppercase",
-                      padding: "10px 0",
+                      padding: "12px 0",
                       background: isCurrent ? "#eff6ff" : "transparent",
                       borderRadius: isCurrent ? "8px 8px 0 0" : 0,
                     }}>{gm.label}</div>
@@ -798,19 +799,19 @@ export default function RoadmapTracker() {
                     {/* Group header */}
                     <div style={{
                       display: "flex", alignItems: "center",
-                      background: `${stream.color}08`,
+                      background: `${stream.color}0c`,
                       borderTop: si === 0 ? "none" : "1px solid #e2e8f0",
                     }}>
                       <div style={{
                         width: LABEL_W, flexShrink: 0,
-                        padding: "10px 16px",
+                        padding: "12px 16px",
                         display: "flex", alignItems: "center", gap: 10,
                       }}>
-                        <span style={{ fontSize: 16 }}>{stream.icon}</span>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: stream.color, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        <span style={{ fontSize: 18 }}>{stream.icon}</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: stream.color, textTransform: "uppercase", letterSpacing: 0.5 }}>
                           {stream.name}
                         </span>
-                        <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>
+                        <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 600 }}>
                           {done}/{total}
                         </span>
                       </div>
@@ -826,35 +827,39 @@ export default function RoadmapTracker() {
                         <div key={m.id} style={{
                           display: "flex", alignItems: "center",
                           height: ROW_H,
-                          background: mi % 2 === 0 ? "white" : "#fafbfc",
+                          background: mi % 2 === 0 ? "white" : "#f8fafc",
                           borderBottom: "1px solid #f1f5f9",
                         }}>
                           {/* Milestone label */}
                           <div style={{
                             width: LABEL_W, flexShrink: 0,
                             padding: "0 16px 0 44px",
-                            display: "flex", alignItems: "center", gap: 8,
+                            display: "flex", alignItems: "center", gap: 10,
                             overflow: "hidden",
                           }}>
                             <div
                               onClick={() => toggleMilestone(stream.id, m.id)}
                               style={{
-                                width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                                width: 20, height: 20, borderRadius: 5, flexShrink: 0,
                                 border: m.done ? `2px solid ${stream.color}` : "2px solid #cbd5e1",
                                 background: m.done ? stream.color : "white",
                                 cursor: "pointer",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                               }}
                             >
-                              {m.done && <span style={{ color: "white", fontSize: 11, fontWeight: 700 }}>✓</span>}
+                              {m.done && <span style={{ color: "white", fontSize: 12, fontWeight: 700 }}>✓</span>}
                             </div>
                             <span
                               title={m.label}
                               style={{
-                                fontSize: 12, fontWeight: 600, lineHeight: 1.3,
-                                color: m.done ? "#94a3b8" : isPast ? "#dc2626" : "#334155",
+                                fontSize: 13, fontWeight: 600, lineHeight: 1.4,
+                                color: m.done ? "#94a3b8" : isPast ? "#dc2626" : "#1e293b",
                                 textDecoration: m.done ? "line-through" : "none",
-                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                whiteSpace: "normal",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
                               }}
                             >
                               {m.label}
@@ -862,12 +867,12 @@ export default function RoadmapTracker() {
                           </div>
 
                           {/* Grid + bar */}
-                          <div style={{ flex: 1, position: "relative", height: "100%", display: "flex" }}>
+                          <div style={{ position: "relative", height: "100%", display: "flex" }}>
                             {ganttMonths.map((gm) => (
                               <div key={gm.label} style={{
-                                flex: `0 0 ${100 / colCount}%`, minWidth: 140,
-                                borderLeft: "1px solid #f1f5f9",
-                                background: gm.index === nowIdx ? "#eff6ff40" : "transparent",
+                                width: COL_W, minWidth: COL_W, flexShrink: 0,
+                                borderLeft: "1px solid #e8ecf0",
+                                background: gm.index === nowIdx ? "#eff6ff30" : "transparent",
                               }} />
                             ))}
 
@@ -875,40 +880,40 @@ export default function RoadmapTracker() {
                             {todayPct !== null && (
                               <div style={{
                                 position: "absolute", top: 0, bottom: 0,
-                                left: `${todayPct}%`, width: 2,
-                                background: "#ef4444", zIndex: 2, opacity: 0.4,
+                                left: `${todayPct * COL_W * colCount / 100}px`, width: 2,
+                                background: "#ef4444", zIndex: 2, opacity: 0.5,
                               }} />
                             )}
 
                             {/* The bar */}
                             <div style={{
                               position: "absolute",
-                              left: `calc(${(colIdx / colCount) * 100}% + 8px)`,
-                              width: `calc(${(1 / colCount) * 100}% - 16px)`,
-                              top: 7, height: ROW_H - 14,
+                              left: colIdx * COL_W + 6,
+                              width: COL_W - 12,
+                              top: (ROW_H - 28) / 2, height: 28,
                               background: m.done
-                                ? `${stream.color}25`
+                                ? `${stream.color}30`
                                 : isPast
-                                  ? `linear-gradient(90deg, #ef4444, ${stream.color})`
+                                  ? "#ef4444"
                                   : stream.color,
-                              borderRadius: 5,
+                              borderRadius: 6,
                               cursor: "pointer",
                               display: "flex", alignItems: "center",
-                              padding: "0 10px",
+                              padding: "0 12px",
                               overflow: "hidden",
-                              border: m.done ? `1.5px solid ${stream.color}50` : isPast ? "1.5px solid #fca5a5" : "none",
-                              boxShadow: m.done ? "none" : "0 1px 3px rgba(0,0,0,0.1)",
+                              border: m.done ? `2px solid ${stream.color}60` : isPast ? "2px solid #dc2626" : "none",
+                              boxShadow: m.done ? "none" : "0 1px 4px rgba(0,0,0,0.12)",
                             }}
                               onClick={() => toggleMilestone(stream.id, m.id)}
                               title={`${m.label}${m.notes ? "\n" + m.notes : ""}${m.completedAt ? "\nDone: " + m.completedAt : ""}`}
                             >
                               <span style={{
-                                fontSize: 11, fontWeight: 600,
+                                fontSize: 12, fontWeight: 700,
                                 color: m.done ? stream.color : "white",
                                 whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                                 textDecoration: m.done ? "line-through" : "none",
                               }}>
-                                {m.done ? "✓ " : isPast ? "! " : ""}{m.label}
+                                {m.done ? "✓ " : isPast ? "! " : ""}{m.target.split(" ")[0]}
                               </span>
                             </div>
                           </div>
@@ -921,24 +926,24 @@ export default function RoadmapTracker() {
 
               {/* Legend */}
               <div style={{
-                display: "flex", gap: 24, marginTop: 20, padding: "12px 0",
-                justifyContent: "center", fontSize: 12, color: "#64748b",
+                display: "flex", gap: 28, marginTop: 20, padding: "14px 0",
+                justifyContent: "center", fontSize: 13, color: "#64748b",
                 borderTop: "1px solid #e2e8f0",
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 16, height: 10, borderRadius: 3, background: "#3b82f6", boxShadow: "0 1px 2px rgba(0,0,0,0.1)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 20, height: 12, borderRadius: 4, background: "#3b82f6", boxShadow: "0 1px 2px rgba(0,0,0,0.1)" }} />
                   On Track
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 16, height: 10, borderRadius: 3, background: "linear-gradient(90deg, #ef4444, #3b82f6)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 20, height: 12, borderRadius: 4, background: "#ef4444" }} />
                   Overdue
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 16, height: 10, borderRadius: 3, background: "#3b82f640", border: "1px solid #3b82f660" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 20, height: 12, borderRadius: 4, background: "#3b82f630", border: "2px solid #3b82f660" }} />
                   Complete
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 2, height: 14, background: "#ef4444", opacity: 0.5 }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 2, height: 16, background: "#ef4444", opacity: 0.5 }} />
                   Today
                 </div>
               </div>
