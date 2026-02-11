@@ -2,15 +2,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 // ============ GAME CONFIG ============
 const XP_PER_MILESTONE = 50;
-const MAX_XP = 1350;
-const LEVELS = [
-  { level: 1, title: "Dreamer", xpNeeded: 0, emoji: "💭", desc: "You have a vision. Time to act on it." },
-  { level: 2, title: "Researcher", xpNeeded: 150, emoji: "🔍", desc: "You're gathering real data — not just dreaming." },
-  { level: 3, title: "Architect", xpNeeded: 350, emoji: "📐", desc: "Strategy is forming. The plan has shape." },
-  { level: 4, title: "Builder", xpNeeded: 600, emoji: "🏗️", desc: "Deals are in motion. Infrastructure exists." },
-  { level: 5, title: "Operator", xpNeeded: 900, emoji: "⚙️", desc: "A business is running. Revenue is flowing." },
-  { level: 6, title: "Owner", xpNeeded: 1250, emoji: "👑", desc: "Reid & Shatto Holdings is real. You own it." },
-];
 
 const ACHIEVEMENTS = [
   { id: "first_blood", title: "First Blood", desc: "Complete your first milestone", icon: "🩸", check: (s) => s.totalDone >= 1 },
@@ -89,6 +80,20 @@ const WORKSTREAMS = [
       { id: "t5", label: "Operating Plan tab buildout", target: "Jun 2026", done: false, notes: "" },
     ],
   },
+];
+
+// Compute actual max from real data — Owner requires completing everything
+const MAX_XP = WORKSTREAMS.reduce((sum, s) =>
+  sum + s.milestones.length * Math.round(XP_PER_MILESTONE * s.xpMultiplier), 0
+);
+
+const LEVELS = [
+  { level: 1, title: "Dreamer", xpNeeded: 0, emoji: "💭", desc: "You have a vision. Time to act on it." },
+  { level: 2, title: "Researcher", xpNeeded: Math.round(MAX_XP * 0.10), emoji: "🔍", desc: "You're gathering real data — not just dreaming." },
+  { level: 3, title: "Architect", xpNeeded: Math.round(MAX_XP * 0.25), emoji: "📐", desc: "Strategy is forming. The plan has shape." },
+  { level: 4, title: "Builder", xpNeeded: Math.round(MAX_XP * 0.45), emoji: "🏗️", desc: "Deals are in motion. Infrastructure exists." },
+  { level: 5, title: "Operator", xpNeeded: Math.round(MAX_XP * 0.70), emoji: "⚙️", desc: "A business is running. Revenue is flowing." },
+  { level: 6, title: "Owner", xpNeeded: MAX_XP, emoji: "👑", desc: "Reid & Shatto Holdings is real. You own it." },
 ];
 
 const URGENCY_CONFIG = {
