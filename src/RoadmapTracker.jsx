@@ -441,7 +441,6 @@ export default function RoadmapTracker() {
     ));
   };
 
-  const months = ["Feb 2026", "Mar 2026", "Apr 2026", "May 2026", "Jun 2026"];
 
   if (!loaded) {
     return (
@@ -578,12 +577,34 @@ export default function RoadmapTracker() {
 
         <XpBar xp={xp} level={currentLevel} nextLevel={nextLevel} onClickPath={() => setShowXpInfo(true)} />
 
-        <div style={{ display: "flex", gap: 4, marginTop: 14 }}>
+        {/* Badge row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 14, flexWrap: "wrap" }}>
+          {ACHIEVEMENTS.map(a => {
+            const unlocked = unlockedAchievements.includes(a.id);
+            return (
+              <div key={a.id} title={`${a.title}${unlocked ? " — Earned!" : " — " + a.desc}`} style={{
+                width: 34, height: 34, borderRadius: 10,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 18, cursor: "default",
+                background: unlocked ? "rgba(251,191,36,0.2)" : "rgba(255,255,255,0.08)",
+                border: unlocked ? "1.5px solid rgba(251,191,36,0.5)" : "1.5px solid rgba(255,255,255,0.1)",
+                opacity: unlocked ? 1 : 0.35,
+                transition: "all 0.3s",
+                filter: unlocked ? "none" : "grayscale(1)",
+              }}>
+                {unlocked ? a.icon : "🔒"}
+              </div>
+            );
+          })}
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", marginLeft: 4,
+          }}>{unlockedAchievements.length}/{ACHIEVEMENTS.length}</span>
+        </div>
+
+        <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
           {[
             { id: "streams", label: "📋 Streams" },
             { id: "gantt", label: "📊 Gantt" },
-            { id: "timeline", label: "📅 Timeline" },
-            { id: "achievements", label: unlockedAchievements.length === 0 ? "🏅 Medals" : `🏅 ${unlockedAchievements.length}/${ACHIEVEMENTS.length} Earned` },
           ].map(t => (
             <button key={t.id} onClick={() => setView(t.id)} style={{
               padding: "7px 14px", borderRadius: 8, border: "none", cursor: "pointer",
@@ -924,208 +945,7 @@ export default function RoadmapTracker() {
           );
         })()}
 
-        {view === "timeline" && months.map(month => {
-          const items = streams.flatMap(s =>
-            s.milestones.filter(m => m.target === month)
-              .map(m => ({ ...m, streamName: s.name, streamColor: s.color, streamIcon: s.icon, streamId: s.id, xpMult: s.xpMultiplier }))
-          );
-          if (items.length === 0) return null;
-          const monthDone = items.filter(i => i.done).length;
-          return (
-            <div key={month} style={{ marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, paddingBottom: 6, borderBottom: "2px solid #e2e8f0" }}>
-                <h3 style={{ fontSize: 13, fontWeight: 800, color: "#64748b", letterSpacing: 1, textTransform: "uppercase", margin: 0 }}>{month}</h3>
-                <span style={{ fontSize: 12, color: monthDone === items.length ? "#059669" : "#94a3b8", fontWeight: 600 }}>
-                  {monthDone}/{items.length} {monthDone === items.length ? "✓" : ""}
-                </span>
-              </div>
-              {items.map(item => (
-                <div key={item.id} style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "9px 14px", background: "white", borderRadius: 10,
-                  marginBottom: 5, border: "1px solid #e2e8f0",
-                }}>
-                  <div onClick={() => toggleMilestone(item.streamId, item.id)} style={{
-                    width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                    border: item.done ? `2px solid ${item.streamColor}` : "2px solid #cbd5e1",
-                    background: item.done ? item.streamColor : "white",
-                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {item.done && <span style={{ color: "white", fontSize: 11, fontWeight: 700 }}>✓</span>}
-                  </div>
-                  <span style={{
-                    fontSize: 13, fontWeight: 600,
-                    color: item.done ? "#94a3b8" : "#1e293b",
-                    textDecoration: item.done ? "line-through" : "none", flex: 1,
-                  }}>{item.label}</span>
-                  <span style={{
-                    fontSize: 10, fontWeight: 600, padding: "2px 8px",
-                    borderRadius: 100, background: `${item.streamColor}12`, color: item.streamColor,
-                  }}>{item.streamIcon} {item.streamName}</span>
-                </div>
-              ))}
-            </div>
-          );
-        })}
 
-        {view === "achievements" && (() => {
-          const count = unlockedAchievements.length;
-          const total = ACHIEVEMENTS.length;
-          const pct = Math.round((count / total) * 100);
-
-          // Progress hints for locked achievements
-          const getHint = (a) => {
-            if (a.id === "first_move") return `${stats.totalDone}/${1} milestone done`;
-            if (a.id === "legal_eagle") return `${stats.streamDone.legal || 0}/${stats.streamTotal.legal} Legal milestones`;
-            if (a.id === "boots_on_ground") return `${Math.min(stats.streamDone.research || 0, 3)}/3 Research milestones`;
-            if (a.id === "streak_3") return `${Math.min(sessionDoneIds.size, 3)}/3 this session`;
-            if (a.id === "streak_5") return `${Math.min(sessionDoneIds.size, 5)}/5 this session`;
-            if (a.id === "half_way") return `${stats.totalDone}/${Math.ceil(stats.totalAll / 2)} milestones (50%)`;
-            if (a.id === "real_numbers") {
-              const done = (stats.milestoneDone.r2 ? 1 : 0) + (stats.milestoneDone.r3 ? 1 : 0);
-              return `${done}/2 — price validation + competitor audit`;
-            }
-            if (a.id === "strategy_unlocked") {
-              const done = (stats.streamDone.legal || 0) + (stats.streamDone.research || 0);
-              const needed = (stats.streamTotal.legal || 0) + (stats.streamTotal.research || 0);
-              return `${done}/${needed} DO NOW milestones`;
-            }
-            if (a.id === "full_clear") return `${stats.totalDone}/${stats.totalAll} total`;
-            return null;
-          };
-
-          // Sort: unlocked first, then by progress (closest to unlocking)
-          const getProgress = (a) => {
-            if (a.id === "first_move") return stats.totalDone >= 1 ? 1 : stats.totalDone;
-            if (a.id === "legal_eagle") return (stats.streamDone.legal || 0) / (stats.streamTotal.legal || 1);
-            if (a.id === "boots_on_ground") return Math.min(stats.streamDone.research || 0, 3) / 3;
-            if (a.id === "streak_3") return Math.min(sessionDoneIds.size, 3) / 3;
-            if (a.id === "streak_5") return Math.min(sessionDoneIds.size, 5) / 5;
-            if (a.id === "half_way") return stats.totalDone / Math.ceil(stats.totalAll / 2);
-            if (a.id === "real_numbers") return ((stats.milestoneDone.r2 ? 1 : 0) + (stats.milestoneDone.r3 ? 1 : 0)) / 2;
-            if (a.id === "strategy_unlocked") return ((stats.streamDone.legal || 0) + (stats.streamDone.research || 0)) / ((stats.streamTotal.legal || 0) + (stats.streamTotal.research || 0) || 1);
-            if (a.id === "full_clear") return stats.totalDone / (stats.totalAll || 1);
-            return 0;
-          };
-
-          const sorted = [...ACHIEVEMENTS].sort((a, b) => {
-            const aU = unlockedAchievements.includes(a.id) ? 1 : 0;
-            const bU = unlockedAchievements.includes(b.id) ? 1 : 0;
-            if (aU !== bU) return bU - aU;
-            return getProgress(b) - getProgress(a);
-          });
-
-          const encouragement = count === 0
-            ? "Complete your first milestone to start earning medals!"
-            : count < 3
-            ? "You're getting started — keep the momentum going."
-            : count < 6
-            ? "Solid progress. The hard ones are ahead."
-            : count < total
-            ? "Almost there. Finish what you started."
-            : "Every medal earned. Reid & Shatto is real.";
-
-          return (
-            <div>
-              {/* Header */}
-              <div style={{
-                background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
-                borderRadius: 16, padding: "20px 24px", marginBottom: 16,
-                border: "1px solid #fde68a",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: "#92400e" }}>
-                      {count === total ? "🏆 All Medals Earned!" : `🏅 ${count} of ${total} Medals`}
-                    </div>
-                    <div style={{ fontSize: 13, color: "#a16207", marginTop: 4 }}>{encouragement}</div>
-                  </div>
-                  <div style={{
-                    width: 56, height: 56, borderRadius: 100, position: "relative",
-                    background: `conic-gradient(#f59e0b ${pct}%, #fde68a ${pct}%)`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <div style={{
-                      width: 44, height: 44, borderRadius: 100, background: "#fffbeb",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 14, fontWeight: 800, color: "#92400e",
-                    }}>{pct}%</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Medal grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
-                {sorted.map(a => {
-                  const unlocked = unlockedAchievements.includes(a.id);
-                  const hint = !unlocked ? getHint(a) : null;
-                  const prog = !unlocked ? Math.min(getProgress(a), 1) : 1;
-                  const isClose = !unlocked && prog >= 0.5;
-                  return (
-                    <div key={a.id} style={{
-                      background: unlocked
-                        ? "linear-gradient(135deg, #fffbeb, #fef3c7)"
-                        : isClose ? "#fffef5" : "white",
-                      border: unlocked
-                        ? "2px solid #fbbf24"
-                        : isClose ? "1.5px solid #fde68a" : "1px solid #e2e8f0",
-                      borderRadius: 14, padding: "18px",
-                      transition: "all 0.3s",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ fontSize: 32 }}>{unlocked ? a.icon : "🔒"}</div>
-                        {unlocked && (
-                          <div style={{
-                            fontSize: 10, fontWeight: 800, color: "#d97706",
-                            letterSpacing: 1, background: "#fef3c7", padding: "3px 10px",
-                            borderRadius: 100,
-                          }}>EARNED</div>
-                        )}
-                        {isClose && !unlocked && (
-                          <div style={{
-                            fontSize: 10, fontWeight: 700, color: "#d97706",
-                            letterSpacing: 0.5, background: "#fef9e7", padding: "3px 10px",
-                            borderRadius: 100,
-                          }}>CLOSE</div>
-                        )}
-                      </div>
-                      <div style={{
-                        fontSize: 14, fontWeight: 800, marginTop: 8,
-                        color: unlocked ? "#92400e" : isClose ? "#78350f" : "#64748b",
-                      }}>{a.title}</div>
-                      <div style={{
-                        fontSize: 12, marginTop: 3,
-                        color: unlocked ? "#a16207" : "#94a3b8",
-                      }}>{a.desc}</div>
-                      {/* Progress bar for locked achievements */}
-                      {!unlocked && hint && (
-                        <div style={{ marginTop: 10 }}>
-                          <div style={{
-                            height: 6, borderRadius: 100, background: "#f1f5f9",
-                            overflow: "hidden",
-                          }}>
-                            <div style={{
-                              height: "100%", borderRadius: 100,
-                              background: isClose
-                                ? "linear-gradient(90deg, #fbbf24, #f59e0b)"
-                                : "#cbd5e1",
-                              width: `${Math.max(prog * 100, 2)}%`,
-                              transition: "width 0.6s cubic-bezier(0.34,1.56,0.64,1)",
-                            }} />
-                          </div>
-                          <div style={{
-                            fontSize: 11, fontWeight: 600, marginTop: 4,
-                            color: isClose ? "#a16207" : "#94a3b8",
-                          }}>{hint}</div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
       </div>
 
       <style>{`
