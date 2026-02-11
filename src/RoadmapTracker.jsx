@@ -52,8 +52,8 @@ const WORKSTREAMS = [
     milestones: [
       { id: "s1", label: "Buy vs. build decision matrix (pools)", target: "Mar 2026", done: false, notes: "Use scenario builder with REAL asking prices" },
       { id: "s2", label: "Capital allocation plan across verticals", target: "Apr 2026", done: false, notes: "Model needs real inputs first" },
-      { id: "s3", label: "Sister partnership — roles & equity", target: "Apr 2026", done: false, notes: "Orange County pest? Co-invest?" },
-      { id: "s4", label: "Trish operator agreement — term sheet", target: "Apr 2026", done: false, notes: "5-year plan doc as starting point" },
+      { id: "s3", label: "Sister (Trish) partnership — roles & equity", target: "Apr 2026", done: false, notes: "Orange County pest? Co-invest?" },
+      { id: "s4", label: "Sister (Trish) operator agreement — term sheet", target: "Apr 2026", done: false, notes: "5-year plan doc as starting point" },
       { id: "s5", label: "First acquisition target identified", target: "May 2026", done: false, notes: "The 'go' moment" },
       { id: "s6", label: "LOI on first route / business", target: "Jun 2026", done: false, notes: "" },
     ],
@@ -292,6 +292,7 @@ export default function RoadmapTracker() {
   const [xpAnim, setXpAnim] = useState(null);
   const [showXpInfo, setShowXpInfo] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [ganttCollapsed, setGanttCollapsed] = useState({});
   const toastTimer = useRef(null);
   const xpAnimTimer = useRef(null);
   const levelUpTimer = useRef(null);
@@ -794,19 +795,25 @@ export default function RoadmapTracker() {
               {streams.map((stream, si) => {
                 const done = stream.milestones.filter(m => m.done).length;
                 const total = stream.milestones.length;
+                const isCollapsed = ganttCollapsed[stream.id];
                 return (
                   <div key={stream.id} style={{ marginBottom: 4 }}>
-                    {/* Group header */}
-                    <div style={{
-                      display: "flex", alignItems: "center",
-                      background: `${stream.color}0c`,
-                      borderTop: si === 0 ? "none" : "1px solid #e2e8f0",
-                    }}>
+                    {/* Group header — click to collapse/expand */}
+                    <div
+                      onClick={() => setGanttCollapsed(prev => ({ ...prev, [stream.id]: !prev[stream.id] }))}
+                      style={{
+                        display: "flex", alignItems: "center",
+                        background: `${stream.color}0c`,
+                        borderTop: si === 0 ? "none" : "1px solid #e2e8f0",
+                        cursor: "pointer", userSelect: "none",
+                      }}
+                    >
                       <div style={{
                         width: LABEL_W, flexShrink: 0,
                         padding: "12px 16px",
                         display: "flex", alignItems: "center", gap: 10,
                       }}>
+                        <span style={{ fontSize: 12, color: "#94a3b8", transition: "transform 0.2s", transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>▼</span>
                         <span style={{ fontSize: 18 }}>{stream.icon}</span>
                         <span style={{ fontSize: 14, fontWeight: 800, color: stream.color, textTransform: "uppercase", letterSpacing: 0.5 }}>
                           {stream.name}
@@ -819,7 +826,7 @@ export default function RoadmapTracker() {
                     </div>
 
                     {/* Milestone rows */}
-                    {stream.milestones.map((m, mi) => {
+                    {!isCollapsed && stream.milestones.map((m, mi) => {
                       const mIdx = monthIndex(m.target);
                       const colIdx = mIdx - minIdx;
                       const isPast = mIdx < nowIdx && !m.done;
@@ -855,8 +862,8 @@ export default function RoadmapTracker() {
                               {m.done && <span style={{ color: "white", fontSize: 12, fontWeight: 700 }}>✓</span>}
                             </div>
                             <span style={{
-                              fontSize: 13, fontWeight: 600, lineHeight: 1.4,
-                              color: m.done ? "#94a3b8" : isPast ? "#dc2626" : "#1e293b",
+                              fontSize: 13, fontWeight: 400, lineHeight: 1.4,
+                              color: m.done ? "#94a3b8" : isPast ? "#dc2626" : "#334155",
                               textDecoration: m.done ? "line-through" : "none",
                             }}>
                               {m.label}
@@ -945,29 +952,6 @@ export default function RoadmapTracker() {
                 );
               })}
 
-              {/* Legend */}
-              <div style={{
-                display: "flex", gap: 28, marginTop: 20, padding: "14px 0",
-                justifyContent: "center", fontSize: 13, color: "#64748b",
-                borderTop: "1px solid #e2e8f0",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 20, height: 12, borderRadius: 4, background: "#3b82f6", boxShadow: "0 1px 2px rgba(0,0,0,0.1)" }} />
-                  On Track
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 20, height: 12, borderRadius: 4, background: "#ef4444" }} />
-                  Overdue
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 20, height: 12, borderRadius: 4, background: "#3b82f630", border: "2px solid #3b82f660" }} />
-                  Complete
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 2, height: 16, background: "#ef4444", opacity: 0.5 }} />
-                  Today
-                </div>
-              </div>
             </div>
           );
         })()}
