@@ -29,6 +29,7 @@ const WORKSTREAMS = [
       { id: "l4", label: "Operating agreement drafted", target: "Mar 2026", done: false, notes: "Attorney drafts. Must include: member roles, operator equity vesting schedule (4yr w/ 1yr cliff?), profit distribution, exit provisions." },
       { id: "l5", label: "Insurance quotes (GL + WC)", target: "Mar 2026", done: false, notes: "Get 3 quotes. Try: Next Insurance (nextinsurance.com), Thimble, local FL agent. Pool service needs GL + Workers Comp." },
       { id: "l6", label: "Trademark search — Reid & Shatto", target: "Mar 2026", done: false, notes: "USPTO TESS search (tmsearch.uspto.gov). Attorney can file if clear. ~$250-350 per class." },
+      { id: "l7", label: "Business credit card", target: "Mar 2026", done: false, notes: "Apply after EIN + biz bank account are set up. Options: Chase Ink Business Preferred (great rewards, $95/yr), Amex Blue Business Plus (2x on everything, no fee), or Brex (no personal guarantee). Build biz credit early — helps with future financing." },
     ],
   },
   {
@@ -103,13 +104,13 @@ const URGENCY_CONFIG = {
   ongoing: { label: "ONGOING", bg: "#eff6ff", border: "#93c5fd", text: "#2563eb" },
 };
 
-function Confetti({ active, color }) {
+function Confetti({ color }) {
   const canvasRef = useRef(null);
   const particles = useRef([]);
   const animRef = useRef(null);
 
   useEffect(() => {
-    if (!active || !canvasRef.current) return;
+    if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     canvas.width = canvas.offsetWidth;
@@ -146,9 +147,8 @@ function Confetti({ active, color }) {
     };
     animate();
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [active, color]);
+  }, [color]);
 
-  if (!active) return null;
   return <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 100 }} />;
 }
 
@@ -190,7 +190,7 @@ function XpBar({ xp, level, nextLevel, onClickPath }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 24 }}>{level.emoji}</span>
-          <span style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Lvl {level.level}: {level.title}</span>
+          <span style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Level {level.level}: {level.title}</span>
           <button onClick={onClickPath} style={{
             fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 100,
             background: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)",
@@ -282,7 +282,7 @@ export default function RoadmapTracker() {
   const [expandedStream, setExpandedStream] = useState("legal");
   const [view, setView] = useState("streams");
   const [toast, setToast] = useState({ message: "", visible: false, color: "" });
-  const [confettiActive, setConfettiActive] = useState(false);
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [confettiColor, setConfettiColor] = useState("#3b82f6");
   const [sessionDoneIds, setSessionDoneIds] = useState(new Set());
   const [unlockedAchievements, setUnlockedAchievements] = useState([]);
@@ -292,6 +292,11 @@ export default function RoadmapTracker() {
   const [xpAnim, setXpAnim] = useState(null);
   const [showXpInfo, setShowXpInfo] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const toastTimer = useRef(null);
+  const xpAnimTimer = useRef(null);
+  const levelUpTimer = useRef(null);
+  const achieveTimer = useRef(null);
+  const achieveHideTimer = useRef(null);
 
   // Load persisted state on mount
   useEffect(() => {
@@ -303,6 +308,20 @@ export default function RoadmapTracker() {
       setLoaded(true);
     });
   }, []);
+
+  // Revalidate achievements after load — removes stale unlocks (e.g. session-based)
+  useEffect(() => {
+    if (!loaded) return;
+    const currentStats = getStats(streams, 0);
+    setUnlockedAchievements(prev => {
+      const valid = prev.filter(id => {
+        const a = ACHIEVEMENTS.find(ach => ach.id === id);
+        return a && a.check(currentStats);
+      });
+      return valid.length !== prev.length ? valid : prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   // Auto-save whenever streams or achievements change (skip initial load)
   useEffect(() => {
@@ -338,15 +357,14 @@ export default function RoadmapTracker() {
   const stats = getStats(streams, sessionDoneIds.size);
 
   const showToast = useCallback((message, color) => {
+    clearTimeout(toastTimer.current);
     setToast({ message, visible: true, color });
-    setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
+    toastTimer.current = setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
   }, []);
 
   const fireConfetti = useCallback((color) => {
     setConfettiColor(color);
-    setConfettiActive(false);
-    requestAnimationFrame(() => setConfettiActive(true));
-    setTimeout(() => setConfettiActive(false), 2500);
+    setConfettiTrigger(prev => prev + 1);
   }, []);
 
   const toggleMilestone = (streamId, milestoneId) => {
@@ -368,8 +386,9 @@ export default function RoadmapTracker() {
       const newSessionIds = new Set(sessionDoneIds).add(milestoneId);
       setSessionDoneIds(newSessionIds);
       const newSessionDone = newSessionIds.size;
+      clearTimeout(xpAnimTimer.current);
       setXpAnim({ id: milestoneId, amount: earnedXp });
-      setTimeout(() => setXpAnim(null), 1200);
+      xpAnimTimer.current = setTimeout(() => setXpAnim(null), 1200);
 
       const ptsLabel = earnedXp + " pts";
       const tag = stream.xpMultiplier >= 2 ? " — highest priority!" : stream.xpMultiplier >= 1.5 ? " — high priority!" : stream.xpMultiplier < 1 ? " — do the real-world stuff for more" : "";
@@ -378,23 +397,39 @@ export default function RoadmapTracker() {
 
       const newXp = calcXp(newStreams);
       const newLevel = [...LEVELS].reverse().find(l => newXp >= l.xpNeeded);
+      clearTimeout(levelUpTimer.current);
       if (newLevel && newLevel.level > currentLevel.level) {
-        setTimeout(() => {
+        levelUpTimer.current = setTimeout(() => {
           showToast(`LEVEL UP → ${newLevel.emoji} ${newLevel.title}!`, "#8b5cf6");
           fireConfetti("#8b5cf6");
         }, 1500);
       }
 
       const newStats = getStats(newStreams, newSessionDone);
-      setTimeout(() => {
+      clearTimeout(achieveTimer.current);
+      clearTimeout(achieveHideTimer.current);
+      achieveTimer.current = setTimeout(() => {
         ACHIEVEMENTS.forEach(a => {
           if (!unlockedAchievements.includes(a.id) && a.check(newStats)) {
             setUnlockedAchievements(prev => [...prev, a.id]);
             setShowAchievement(a);
-            setTimeout(() => setShowAchievement(null), 4000);
+            achieveHideTimer.current = setTimeout(() => setShowAchievement(null), 4000);
           }
         });
       }, 2000);
+    } else {
+      // Unchecking: cancel pending achievement timer and revoke achievements that no longer qualify
+      clearTimeout(achieveTimer.current);
+      clearTimeout(achieveHideTimer.current);
+      const newSessionIds = new Set(sessionDoneIds);
+      newSessionIds.delete(milestoneId);
+      setSessionDoneIds(newSessionIds);
+
+      const newStats = getStats(newStreams, newSessionIds.size);
+      setUnlockedAchievements(prev => prev.filter(id => {
+        const achievement = ACHIEVEMENTS.find(a => a.id === id);
+        return achievement && achievement.check(newStats);
+      }));
     }
   };
 
@@ -421,7 +456,7 @@ export default function RoadmapTracker() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', 'Segoe UI', system-ui, sans-serif", background: "#f8fafc", minHeight: "100vh", position: "relative" }}>
-      <Confetti active={confettiActive} color={confettiColor} />
+      {confettiTrigger > 0 && <Confetti key={confettiTrigger} color={confettiColor} />}
       <Toast {...toast} />
 
       {showAchievement && (
@@ -499,7 +534,7 @@ export default function RoadmapTracker() {
                         fontSize: 13, fontWeight: isCurrent ? 800 : 600,
                         color: reached ? "#1e293b" : "#94a3b8",
                       }}>
-                        Lvl {l.level}: {l.title} {isCurrent && <span style={{ color: "#8b5cf6" }}>← you</span>}
+                        Level {l.level}: {l.title} {isCurrent && <span style={{ color: "#8b5cf6" }}>← you</span>}
                       </div>
                       <div style={{ fontSize: 11, color: "#94a3b8" }}>{l.desc}</div>
                     </div>
@@ -548,7 +583,7 @@ export default function RoadmapTracker() {
             { id: "streams", label: "📋 Streams" },
             { id: "gantt", label: "📊 Gantt" },
             { id: "timeline", label: "📅 Timeline" },
-            { id: "achievements", label: `🏅 ${unlockedAchievements.length}/${ACHIEVEMENTS.length}` },
+            { id: "achievements", label: unlockedAchievements.length === 0 ? "🏅 Medals" : `🏅 ${unlockedAchievements.length}/${ACHIEVEMENTS.length} Earned` },
           ].map(t => (
             <button key={t.id} onClick={() => setView(t.id)} style={{
               padding: "7px 14px", borderRadius: 8, border: "none", cursor: "pointer",
@@ -933,27 +968,164 @@ export default function RoadmapTracker() {
           );
         })}
 
-        {view === "achievements" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
-            {ACHIEVEMENTS.map(a => {
-              const unlocked = unlockedAchievements.includes(a.id);
-              return (
-                <div key={a.id} style={{
-                  background: unlocked ? "linear-gradient(135deg, #fffbeb, #fef3c7)" : "white",
-                  border: unlocked ? "2px solid #fbbf24" : "1px solid #e2e8f0",
-                  borderRadius: 14, padding: "18px",
-                  opacity: unlocked ? 1 : 0.45, transition: "all 0.3s",
-                }}>
-                  <div style={{ fontSize: 32, marginBottom: 6 }}>{a.icon}</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: unlocked ? "#92400e" : "#64748b" }}>{a.title}</div>
-                  <div style={{ fontSize: 12, color: unlocked ? "#a16207" : "#94a3b8", marginTop: 3 }}>{a.desc}</div>
-                  {unlocked && <div style={{ fontSize: 10, fontWeight: 700, color: "#d97706", marginTop: 6, letterSpacing: 1 }}>UNLOCKED</div>}
-                  {!unlocked && <div style={{ fontSize: 10, fontWeight: 600, color: "#cbd5e1", marginTop: 6 }}>Locked</div>}
+        {view === "achievements" && (() => {
+          const count = unlockedAchievements.length;
+          const total = ACHIEVEMENTS.length;
+          const pct = Math.round((count / total) * 100);
+
+          // Progress hints for locked achievements
+          const getHint = (a) => {
+            if (a.id === "first_move") return `${stats.totalDone}/${1} milestone done`;
+            if (a.id === "legal_eagle") return `${stats.streamDone.legal || 0}/${stats.streamTotal.legal} Legal milestones`;
+            if (a.id === "boots_on_ground") return `${Math.min(stats.streamDone.research || 0, 3)}/3 Research milestones`;
+            if (a.id === "streak_3") return `${Math.min(sessionDoneIds.size, 3)}/3 this session`;
+            if (a.id === "streak_5") return `${Math.min(sessionDoneIds.size, 5)}/5 this session`;
+            if (a.id === "half_way") return `${stats.totalDone}/${Math.ceil(stats.totalAll / 2)} milestones (50%)`;
+            if (a.id === "real_numbers") {
+              const done = (stats.milestoneDone.r2 ? 1 : 0) + (stats.milestoneDone.r3 ? 1 : 0);
+              return `${done}/2 — price validation + competitor audit`;
+            }
+            if (a.id === "strategy_unlocked") {
+              const done = (stats.streamDone.legal || 0) + (stats.streamDone.research || 0);
+              const needed = (stats.streamTotal.legal || 0) + (stats.streamTotal.research || 0);
+              return `${done}/${needed} DO NOW milestones`;
+            }
+            if (a.id === "full_clear") return `${stats.totalDone}/${stats.totalAll} total`;
+            return null;
+          };
+
+          // Sort: unlocked first, then by progress (closest to unlocking)
+          const getProgress = (a) => {
+            if (a.id === "first_move") return stats.totalDone >= 1 ? 1 : stats.totalDone;
+            if (a.id === "legal_eagle") return (stats.streamDone.legal || 0) / (stats.streamTotal.legal || 1);
+            if (a.id === "boots_on_ground") return Math.min(stats.streamDone.research || 0, 3) / 3;
+            if (a.id === "streak_3") return Math.min(sessionDoneIds.size, 3) / 3;
+            if (a.id === "streak_5") return Math.min(sessionDoneIds.size, 5) / 5;
+            if (a.id === "half_way") return stats.totalDone / Math.ceil(stats.totalAll / 2);
+            if (a.id === "real_numbers") return ((stats.milestoneDone.r2 ? 1 : 0) + (stats.milestoneDone.r3 ? 1 : 0)) / 2;
+            if (a.id === "strategy_unlocked") return ((stats.streamDone.legal || 0) + (stats.streamDone.research || 0)) / ((stats.streamTotal.legal || 0) + (stats.streamTotal.research || 0) || 1);
+            if (a.id === "full_clear") return stats.totalDone / (stats.totalAll || 1);
+            return 0;
+          };
+
+          const sorted = [...ACHIEVEMENTS].sort((a, b) => {
+            const aU = unlockedAchievements.includes(a.id) ? 1 : 0;
+            const bU = unlockedAchievements.includes(b.id) ? 1 : 0;
+            if (aU !== bU) return bU - aU;
+            return getProgress(b) - getProgress(a);
+          });
+
+          const encouragement = count === 0
+            ? "Complete your first milestone to start earning medals!"
+            : count < 3
+            ? "You're getting started — keep the momentum going."
+            : count < 6
+            ? "Solid progress. The hard ones are ahead."
+            : count < total
+            ? "Almost there. Finish what you started."
+            : "Every medal earned. Reid & Shatto is real.";
+
+          return (
+            <div>
+              {/* Header */}
+              <div style={{
+                background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
+                borderRadius: 16, padding: "20px 24px", marginBottom: 16,
+                border: "1px solid #fde68a",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "#92400e" }}>
+                      {count === total ? "🏆 All Medals Earned!" : `🏅 ${count} of ${total} Medals`}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#a16207", marginTop: 4 }}>{encouragement}</div>
+                  </div>
+                  <div style={{
+                    width: 56, height: 56, borderRadius: 100, position: "relative",
+                    background: `conic-gradient(#f59e0b ${pct}%, #fde68a ${pct}%)`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 100, background: "#fffbeb",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 14, fontWeight: 800, color: "#92400e",
+                    }}>{pct}%</div>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+
+              {/* Medal grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
+                {sorted.map(a => {
+                  const unlocked = unlockedAchievements.includes(a.id);
+                  const hint = !unlocked ? getHint(a) : null;
+                  const prog = !unlocked ? Math.min(getProgress(a), 1) : 1;
+                  const isClose = !unlocked && prog >= 0.5;
+                  return (
+                    <div key={a.id} style={{
+                      background: unlocked
+                        ? "linear-gradient(135deg, #fffbeb, #fef3c7)"
+                        : isClose ? "#fffef5" : "white",
+                      border: unlocked
+                        ? "2px solid #fbbf24"
+                        : isClose ? "1.5px solid #fde68a" : "1px solid #e2e8f0",
+                      borderRadius: 14, padding: "18px",
+                      transition: "all 0.3s",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ fontSize: 32 }}>{unlocked ? a.icon : "🔒"}</div>
+                        {unlocked && (
+                          <div style={{
+                            fontSize: 10, fontWeight: 800, color: "#d97706",
+                            letterSpacing: 1, background: "#fef3c7", padding: "3px 10px",
+                            borderRadius: 100,
+                          }}>EARNED</div>
+                        )}
+                        {isClose && !unlocked && (
+                          <div style={{
+                            fontSize: 10, fontWeight: 700, color: "#d97706",
+                            letterSpacing: 0.5, background: "#fef9e7", padding: "3px 10px",
+                            borderRadius: 100,
+                          }}>CLOSE</div>
+                        )}
+                      </div>
+                      <div style={{
+                        fontSize: 14, fontWeight: 800, marginTop: 8,
+                        color: unlocked ? "#92400e" : isClose ? "#78350f" : "#64748b",
+                      }}>{a.title}</div>
+                      <div style={{
+                        fontSize: 12, marginTop: 3,
+                        color: unlocked ? "#a16207" : "#94a3b8",
+                      }}>{a.desc}</div>
+                      {/* Progress bar for locked achievements */}
+                      {!unlocked && hint && (
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{
+                            height: 6, borderRadius: 100, background: "#f1f5f9",
+                            overflow: "hidden",
+                          }}>
+                            <div style={{
+                              height: "100%", borderRadius: 100,
+                              background: isClose
+                                ? "linear-gradient(90deg, #fbbf24, #f59e0b)"
+                                : "#cbd5e1",
+                              width: `${Math.max(prog * 100, 2)}%`,
+                              transition: "width 0.6s cubic-bezier(0.34,1.56,0.64,1)",
+                            }} />
+                          </div>
+                          <div style={{
+                            fontSize: 11, fontWeight: 600, marginTop: 4,
+                            color: isClose ? "#a16207" : "#94a3b8",
+                          }}>{hint}</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       <style>{`
