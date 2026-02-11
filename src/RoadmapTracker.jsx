@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 const XP_PER_MILESTONE = 50;
 
 const ACHIEVEMENTS = [
-  { id: "first_blood", title: "First Blood", desc: "Complete your first milestone", icon: "🩸", check: (s) => s.totalDone >= 1 },
+  { id: "first_move", title: "First Move", desc: "Complete your first milestone", icon: "🚀", check: (s) => s.totalDone >= 1 },
   { id: "legal_eagle", title: "Legal Eagle", desc: "Complete all Legal & Entity milestones", icon: "⚖️", check: (s) => s.streamDone.legal === s.streamTotal.legal },
   { id: "boots_on_ground", title: "Boots on the Ground", desc: "Complete 3 Market Research milestones", icon: "🥾", check: (s) => s.streamDone.research >= 3 },
   { id: "streak_3", title: "On a Roll", desc: "Complete 3 milestones in one session", icon: "🔥", check: (s) => s.sessionDone >= 3 },
@@ -292,9 +292,11 @@ export default function RoadmapTracker() {
     const milestone = stream.milestones.find(m => m.id === milestoneId);
     const wasUndone = !milestone.done;
 
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const newStreams = streams.map(s =>
       s.id === streamId
-        ? { ...s, milestones: s.milestones.map(m => m.id === milestoneId ? { ...m, done: !m.done } : m) }
+        ? { ...s, milestones: s.milestones.map(m => m.id === milestoneId ? { ...m, done: !m.done, completedAt: wasUndone ? dateStr : null } : m) }
         : s
     );
     setStreams(newStreams);
@@ -593,7 +595,9 @@ export default function RoadmapTracker() {
                             animation: "floatUp 1.2s ease-out forwards",
                           }}>+{xpAnim.amount}</span>
                         )}
-                        <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>{m.target}</span>
+                        <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, textAlign: "right" }}>
+                          {m.completedAt ? <span style={{ color: "#059669", fontWeight: 600 }}>{m.completedAt}</span> : m.target}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -765,7 +769,7 @@ export default function RoadmapTracker() {
                               boxShadow: m.done ? "none" : "0 1px 3px rgba(0,0,0,0.1)",
                             }}
                               onClick={() => toggleMilestone(stream.id, m.id)}
-                              title={m.notes || m.label}
+                              title={`${m.label}${m.notes ? "\n" + m.notes : ""}${m.completedAt ? "\nDone: " + m.completedAt : ""}`}
                             >
                               <span style={{
                                 fontSize: 11, fontWeight: 600,
@@ -773,7 +777,7 @@ export default function RoadmapTracker() {
                                 whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                                 textDecoration: m.done ? "line-through" : "none",
                               }}>
-                                {m.done ? "✓ " : isPast ? "! " : ""}{m.target.split(" ")[0]}
+                                {m.done ? "✓ " : isPast ? "! " : ""}{m.label}
                               </span>
                             </div>
                           </div>
