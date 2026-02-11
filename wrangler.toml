@@ -1,0 +1,6 @@
+name = "reid-shatto-roadmap"
+pages_build_output_dir = "dist"
+
+[[kv_namespaces]]
+binding = "ROADMAP_STATE"
+id = "75dfa6cdd1c2434298cfb5a2d20e1329"

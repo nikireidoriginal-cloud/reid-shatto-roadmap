@@ -233,6 +233,50 @@ function XpBar({ xp, level, nextLevel, onClickPath }) {
   );
 }
 
+// ============ PERSISTENCE ============
+const API_URL = "/api/state";
+
+function applyPersistedState(persisted) {
+  if (!persisted || !persisted.milestones) return WORKSTREAMS;
+  return WORKSTREAMS.map(s => ({
+    ...s,
+    milestones: s.milestones.map(m => {
+      const saved = persisted.milestones[m.id];
+      if (saved) return { ...m, done: saved.done, completedAt: saved.completedAt || null, notes: saved.notes ?? m.notes };
+      return m;
+    }),
+  }));
+}
+
+function extractState(streams, achievements) {
+  const milestones = {};
+  streams.forEach(s => {
+    s.milestones.forEach(m => {
+      milestones[m.id] = { done: m.done, completedAt: m.completedAt || null, notes: m.notes };
+    });
+  });
+  return { milestones, unlockedAchievements: achievements };
+}
+
+async function loadState() {
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Object.keys(data).length > 0 ? data : null;
+  } catch { return null; }
+}
+
+async function saveState(streams, achievements) {
+  try {
+    await fetch(API_URL, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(extractState(streams, achievements)),
+    });
+  } catch { /* silently fail — state will persist next save */ }
+}
+
 export default function RoadmapTracker() {
   const [streams, setStreams] = useState(WORKSTREAMS);
   const [expandedStream, setExpandedStream] = useState("legal");
@@ -247,6 +291,24 @@ export default function RoadmapTracker() {
   const [noteText, setNoteText] = useState("");
   const [xpAnim, setXpAnim] = useState(null);
   const [showXpInfo, setShowXpInfo] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load persisted state on mount
+  useEffect(() => {
+    loadState().then(persisted => {
+      if (persisted) {
+        setStreams(applyPersistedState(persisted));
+        if (persisted.unlockedAchievements) setUnlockedAchievements(persisted.unlockedAchievements);
+      }
+      setLoaded(true);
+    });
+  }, []);
+
+  // Auto-save whenever streams or achievements change (skip initial load)
+  useEffect(() => {
+    if (!loaded) return;
+    saveState(streams, unlockedAchievements);
+  }, [streams, unlockedAchievements, loaded]);
 
   const calcXp = useCallback((s) => {
     let xp = 0;
@@ -344,6 +406,17 @@ export default function RoadmapTracker() {
   };
 
   const months = ["Feb 2026", "Mar 2026", "Apr 2026", "May 2026", "Jun 2026"];
+
+  if (!loaded) {
+    return (
+      <div style={{
+        fontFamily: "'DM Sans', 'Segoe UI', system-ui, sans-serif",
+        background: "#0f172a", minHeight: "100vh",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        color: "white", fontSize: 16, fontWeight: 600, opacity: 0.5,
+      }}>Loading...</div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: "'DM Sans', 'Segoe UI', system-ui, sans-serif", background: "#f8fafc", minHeight: "100vh", position: "relative" }}>
