@@ -284,7 +284,7 @@ export default function RoadmapTracker() {
   const [toast, setToast] = useState({ message: "", visible: false, color: "" });
   const [confettiActive, setConfettiActive] = useState(false);
   const [confettiColor, setConfettiColor] = useState("#3b82f6");
-  const [sessionDone, setSessionDone] = useState(0);
+  const [sessionDoneIds, setSessionDoneIds] = useState(new Set());
   const [unlockedAchievements, setUnlockedAchievements] = useState([]);
   const [showAchievement, setShowAchievement] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
@@ -335,7 +335,7 @@ export default function RoadmapTracker() {
   const xp = calcXp(streams);
   const currentLevel = [...LEVELS].reverse().find(l => xp >= l.xpNeeded) || LEVELS[0];
   const nextLevel = LEVELS.find(l => l.xpNeeded > xp) || null;
-  const stats = getStats(streams, sessionDone);
+  const stats = getStats(streams, sessionDoneIds.size);
 
   const showToast = useCallback((message, color) => {
     setToast({ message, visible: true, color });
@@ -365,8 +365,9 @@ export default function RoadmapTracker() {
 
     if (wasUndone) {
       const earnedXp = Math.round(XP_PER_MILESTONE * stream.xpMultiplier);
-      const newSessionDone = sessionDone + 1;
-      setSessionDone(newSessionDone);
+      const newSessionIds = new Set(sessionDoneIds).add(milestoneId);
+      setSessionDoneIds(newSessionIds);
+      const newSessionDone = newSessionIds.size;
       setXpAnim({ id: milestoneId, amount: earnedXp });
       setTimeout(() => setXpAnim(null), 1200);
 
@@ -535,7 +536,7 @@ export default function RoadmapTracker() {
             <div style={{ fontSize: 13, opacity: 0.5 }}>{stats.totalDone}/{stats.totalAll} milestones</div>
             <div style={{ fontSize: 13 }}>
               <span style={{ opacity: 0.5 }}>Session: </span>
-              <span style={{ color: "#fbbf24", fontWeight: 700 }}>{sessionDone} done</span>
+              <span style={{ color: "#fbbf24", fontWeight: 700 }}>{sessionDoneIds.size} done</span>
             </div>
           </div>
         </div>
