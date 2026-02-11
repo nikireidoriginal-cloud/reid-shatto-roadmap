@@ -763,8 +763,8 @@ export default function RoadmapTracker() {
             ? ((nowIdx - minIdx) + (now.getDate() / 30)) / colCount * 100
             : null;
 
-          const ROW_H = 48;
-          const LABEL_W = 300;
+          const ROW_H = 56;
+          const LABEL_W = 320;
           const COL_W = 180;
 
           return (
@@ -824,22 +824,22 @@ export default function RoadmapTracker() {
                       const colIdx = mIdx - minIdx;
                       const isPast = mIdx < nowIdx && !m.done;
                       const xp = Math.round(XP_PER_MILESTONE * stream.xpMultiplier);
-                      const tooltip = [m.label, `Target: ${m.target}`, `${xp} XP`, m.notes, m.completedAt ? `Done: ${m.completedAt}` : ""].filter(Boolean).join("\n");
+                      const tooltipLines = [m.label, `Target: ${m.target}  ·  ${xp} XP`, m.notes, m.completedAt ? `Done: ${m.completedAt}` : ""].filter(Boolean);
                       return (
                         <div key={m.id} style={{
-                          display: "flex", alignItems: "center",
-                          height: ROW_H,
+                          display: "flex", alignItems: "stretch",
+                          minHeight: ROW_H,
                           background: mi % 2 === 0 ? "white" : "#f8fafc",
                           borderBottom: "1px solid #f1f5f9",
                         }}>
-                          {/* Milestone label — the readable text lives here */}
+                          {/* Milestone label — full readable text, wraps to 2 lines */}
                           <div
-                            title={tooltip}
+                            className="gantt-tooltip-wrap"
                             style={{
                               width: LABEL_W, flexShrink: 0,
-                              padding: "0 16px 0 44px",
+                              padding: "8px 12px 8px 44px",
                               display: "flex", alignItems: "center", gap: 10,
-                              overflow: "hidden",
+                              position: "relative",
                             }}
                           >
                             <div
@@ -858,14 +858,30 @@ export default function RoadmapTracker() {
                               fontSize: 13, fontWeight: 600, lineHeight: 1.4,
                               color: m.done ? "#94a3b8" : isPast ? "#dc2626" : "#1e293b",
                               textDecoration: m.done ? "line-through" : "none",
-                              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                             }}>
                               {m.label}
                             </span>
+                            {/* Tooltip */}
+                            <div className="gantt-tooltip" style={{
+                              position: "absolute", left: "100%", top: "50%", transform: "translateY(-50%)",
+                              background: "#1e293b", color: "white", padding: "10px 14px",
+                              borderRadius: 8, fontSize: 12, lineHeight: 1.5,
+                              width: 280, zIndex: 100, pointerEvents: "none",
+                              boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                              whiteSpace: "pre-wrap",
+                            }}>
+                              {tooltipLines.map((line, i) => (
+                                <div key={i} style={{
+                                  fontWeight: i === 0 ? 700 : 400,
+                                  color: i === 0 ? "white" : "#cbd5e1",
+                                  marginTop: i > 0 ? 4 : 0,
+                                }}>{line}</div>
+                              ))}
+                            </div>
                           </div>
 
                           {/* Grid + bar */}
-                          <div style={{ position: "relative", height: "100%", display: "flex" }}>
+                          <div style={{ position: "relative", display: "flex", flex: 1 }}>
                             {ganttMonths.map((gm) => (
                               <div key={gm.label} style={{
                                 width: COL_W, minWidth: COL_W, flexShrink: 0,
@@ -885,13 +901,13 @@ export default function RoadmapTracker() {
 
                             {/* The bar — clean colored block, no text */}
                             <div
-                              title={tooltip}
+                              className="gantt-tooltip-wrap"
                               onClick={() => toggleMilestone(stream.id, m.id)}
                               style={{
                                 position: "absolute",
                                 left: colIdx * COL_W + 6,
                                 width: Math.max(COL_W - 12, 60),
-                                top: (ROW_H - 28) / 2, height: 28,
+                                top: "50%", transform: "translateY(-50%)", height: 28,
                                 background: m.done
                                   ? `${stream.color}30`
                                   : isPast
@@ -902,7 +918,25 @@ export default function RoadmapTracker() {
                                 border: m.done ? `2px solid ${stream.color}60` : isPast ? "2px solid #dc2626" : "none",
                                 boxShadow: m.done ? "none" : "0 1px 4px rgba(0,0,0,0.12)",
                               }}
-                            />
+                            >
+                              {/* Tooltip */}
+                              <div className="gantt-tooltip" style={{
+                                position: "absolute", left: "50%", bottom: "calc(100% + 8px)", transform: "translateX(-50%)",
+                                background: "#1e293b", color: "white", padding: "10px 14px",
+                                borderRadius: 8, fontSize: 12, lineHeight: 1.5,
+                                width: 280, zIndex: 100, pointerEvents: "none",
+                                boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                                whiteSpace: "pre-wrap",
+                              }}>
+                                {tooltipLines.map((line, i) => (
+                                  <div key={i} style={{
+                                    fontWeight: i === 0 ? 700 : 400,
+                                    color: i === 0 ? "white" : "#cbd5e1",
+                                    marginTop: i > 0 ? 4 : 0,
+                                  }}>{line}</div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       );
